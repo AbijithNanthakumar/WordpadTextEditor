@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Text Editor</title>
-  <link rel="stylesheet" href="index.css">
+  <link rel="stylesheet" href="index.css" />
 </head>
 <body>
   <div id="editorApp">
@@ -15,31 +15,39 @@
     </header>
 
     <div id="toolbar">
-      <button data-cmd="bold">B</button>
-      <button data-cmd="italic">I</button>
-      <button data-cmd="underline">U</button>
+      <button data-cmd="bold"><b>B</b></button>
+      <button data-cmd="italic"><i>I</i></button>
+      <button data-cmd="underline"><u>U</u></button>
+
       <select id="headings">
         <option value="p">Normal</option>
         <option value="h1">H1</option>
         <option value="h2">H2</option>
         <option value="h3">H3</option>
       </select>
+
       <select id="fontSize">
         <option value="1">Small</option>
         <option value="3" selected>Normal</option>
         <option value="5">Large</option>
       </select>
-      <input type="color" id="fontColor">
-      <input type="color" id="hiliteColor">
+
+      <input type="color" id="fontColor" title="Font Color">
+      <input type="color" id="hiliteColor" title="Highlight Color">
+
       <button id="insertLinkBtn">Link</button>
       <button id="insertImgBtn">Image</button>
+      <button id="insertOverlayBtn">Image + Text</button>
       <input type="file" id="imgFile" accept="image/*">
       <input type="text" id="imgURL" placeholder="Image URL">
+
       <button id="insertTableBtn">Table</button>
       <input type="number" id="tableRows" placeholder="Rows" min="1">
       <input type="number" id="tableCols" placeholder="Cols" min="1">
+
       <button id="clearFormat">Clear Format</button>
       <button id="resetContent">Reset</button>
+      <button id="toggleTheme">🌓 Theme</button>
     </div>
 
     <div id="editor" contenteditable="true"></div>
@@ -53,10 +61,13 @@
     </footer>
 
     <div id="previewModal">
-      <button id="closePreview">X</button>
-      <div id="previewWindow"></div>
+      <div id="previewBox">
+        <button id="closePreview">X</button>
+        <div id="previewWindow"></div>
+      </div>
     </div>
   </div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
   <script src="index.js"></script>
 </body>

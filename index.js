@@ -7,10 +7,6 @@ class Editor {
     document.execCommand(cmd, false, value);
   }
 
-  setFontFamily(font) {
-    this.exec('fontName', font);
-  }
-
   setFontSize(size) {
     this.exec('fontSize', size);
   }
@@ -28,7 +24,30 @@ class Editor {
   }
 
   insertImage(url) {
-    this.exec('insertImage', url);
+    const img = document.createElement('img');
+    img.src = url;
+    img.style.width = '300px'; // default width
+    img.onload = () => this.editor.appendChild(img);
+  }
+
+  insertImageWithOverlay(url) {
+    const container = document.createElement('div');
+    container.classList.add('img-text-container');
+
+    const img = document.createElement('img');
+    img.src = url;
+
+    const overlay = document.createElement('div');
+    overlay.classList.add('overlay-text');
+    overlay.contentEditable = true;
+    overlay.innerText = 'Your Text Here';
+
+    container.appendChild(img);
+    container.appendChild(overlay);
+    this.editor.appendChild(container);
+
+    // Focus overlay so user can type immediately
+    overlay.focus();
   }
 
   insertTable(rows, cols) {
@@ -50,6 +69,7 @@ class Editor {
 
   reset() {
     this.editor.innerHTML = '';
+    localStorage.removeItem('editorContent');
   }
 }
 
@@ -61,7 +81,36 @@ class Exporter {
   }
 
   buildDocHtml() {
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${this.titleEl.value}</title></head><body><h1>${this.titleEl.value}</h1><h3>By ${this.authorEl.value}</h3>${this.editor.innerHTML}</body></html>`;
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>${this.titleEl.value}</title>
+          <style>
+            body { font-family: 'Segoe UI', sans-serif; margin: 20px; }
+            .img-text-container { position: relative; display: inline-block; max-width: 100%; }
+            .img-text-container img { width: 100%; height: auto; display: block; }
+            .overlay-text {
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              color: white;
+              background: rgba(0,0,0,0.6);
+              padding: 8px 12px;
+              border-radius: 6px;
+              text-align: center;
+              min-width: 100px;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>${this.titleEl.value}</h1>
+          <h3>By ${this.authorEl.value}</h3>
+          ${this.editor.innerHTML}
+        </body>
+      </html>`;
   }
 
   exportDoc() {
@@ -75,12 +124,16 @@ class Exporter {
 
   exportPDF() {
     const html = this.buildDocHtml();
-    const element = document.createElement('div');
-    element.innerHTML = html;
-    html2pdf().from(element).set({ filename: `${this.titleEl.value || 'document'}.pdf` }).save();
+    const opt = {
+      margin:       10,
+      filename:     `${this.titleEl.value || 'document'}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2 },
+      jsPDF:        { unit: 'pt', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().from(html).set(opt).save();
   }
 }
-
 
 document.addEventListener('DOMContentLoaded', () => {
   const editor = new Editor(document.getElementById('editor'));
@@ -90,15 +143,33 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('docAuthor')
   );
 
-  // Toolbar
+  // Load autosaved content
+  const saved = localStorage.getItem('editorContent');
+  if (saved) {
+    editor.editor.innerHTML = saved;
+  }
+
+  // Autosave
+  setInterval(() => {
+    localStorage.setItem('editorContent', editor.editor.innerHTML);
+  }, 3000);
+
+  // Toolbar commands
   document.querySelectorAll('#toolbar [data-cmd]').forEach(btn => {
     btn.addEventListener('click', () => editor.exec(btn.dataset.cmd));
   });
-
-  document.getElementById('headings').addEventListener('change', e => editor.exec('formatBlock', e.target.value));
-  document.getElementById('fontSize').addEventListener('change', e => editor.setFontSize(e.target.value));
-  document.getElementById('fontColor').addEventListener('input', e => editor.setColor(e.target.value));
-  document.getElementById('hiliteColor').addEventListener('input', e => editor.setHilite(e.target.value));
+  document.getElementById('headings').addEventListener('change', e =>
+    editor.exec('formatBlock', e.target.value)
+  );
+  document.getElementById('fontSize').addEventListener('change', e =>
+    editor.setFontSize(e.target.value)
+  );
+  document.getElementById('fontColor').addEventListener('input', e =>
+    editor.setColor(e.target.value)
+  );
+  document.getElementById('hiliteColor').addEventListener('input', e =>
+    editor.setHilite(e.target.value)
+  );
 
   document.getElementById('insertLinkBtn').addEventListener('click', () => {
     const url = prompt('Enter link URL:');
@@ -108,6 +179,11 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('insertImgBtn').addEventListener('click', () => {
     const url = document.getElementById('imgURL').value;
     if (url) editor.insertImage(url);
+  });
+
+  document.getElementById('insertOverlayBtn').addEventListener('click', () => {
+    const url = document.getElementById('imgURL').value;
+    if (url) editor.insertImageWithOverlay(url);
   });
 
   document.getElementById('imgFile').addEventListener('change', e => {
@@ -120,26 +196,30 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('insertTableBtn').addEventListener('click', () => {
-    const rows = document.getElementById('tableRows').value;
-    const cols = document.getElementById('tableCols').value;
+    const rows = parseInt(document.getElementById('tableRows').value);
+    const cols = parseInt(document.getElementById('tableCols').value);
     if (rows && cols) editor.insertTable(rows, cols);
   });
 
-  document.getElementById('clearFormat').addEventListener('click', () => editor.clearFormatting());
-  document.getElementById('resetContent').addEventListener('click', () => editor.reset());
+  document.getElementById('clearFormat').addEventListener('click', () =>
+    editor.clearFormatting()
+  );
+  document.getElementById('resetContent').addEventListener('click', () =>
+    editor.reset()
+  );
 
   document.getElementById('copyPlain').addEventListener('click', () => {
     navigator.clipboard.writeText(editor.editor.innerText);
     alert('Copied plain text!');
   });
-
   document.getElementById('copyHtml').addEventListener('click', () => {
     navigator.clipboard.writeText(editor.editor.innerHTML);
     alert('Copied HTML!');
   });
 
   document.getElementById('previewBtn').addEventListener('click', () => {
-    document.getElementById('previewWindow').innerHTML = exporter.buildDocHtml();
+    const previewWindow = document.getElementById('previewWindow');
+    previewWindow.innerHTML = exporter.buildDocHtml();
     document.getElementById('previewModal').style.display = 'flex';
   });
 
@@ -147,6 +227,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('previewModal').style.display = 'none';
   });
 
-  document.getElementById('exportDoc').addEventListener('click', () => exporter.exportDoc());
-  document.getElementById('exportPdf').addEventListener('click', () => exporter.exportPDF());
+  document.getElementById('exportPdf').addEventListener('click', () =>
+    exporter.exportPDF()
+  );
+  document.getElementById('exportDoc').addEventListener('click', () =>
+    exporter.exportDoc()
+  );
+
+  document.getElementById('toggleTheme').addEventListener('click', () =>
+    document.body.classList.toggle('dark')
+  );
 });
